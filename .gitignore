@@ -6,4 +6,5 @@ result
 images
 record
 snapshot
-.vscode
+.*
+!/.gitignore
