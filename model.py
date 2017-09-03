@@ -402,7 +402,6 @@ class Model(object):
         # create the network
         #model = resnet3D.resnet34(nll = False)
         model = vnet.VNet(nll=True)
-        model = torch.nn.DataParallel(model, device_ids = self.params['ModelParams']['device_ids'])
 
         # train from scratch or continue from the snapshot
         if (self.params['ModelParams']['snapshot'] > 0):
@@ -415,7 +414,7 @@ class Model(object):
             print "=> loaded checkpoint ", str(self.params['ModelParams']['snapshot'])
         else:
             model.apply(self.weights_init)
-
+        model = torch.nn.DataParallel(model, device_ids = self.params['ModelParams']['device_ids']) #place after the weights initialization
         plt.ion()
 
         self.trainThread(model, trainData_loader)
