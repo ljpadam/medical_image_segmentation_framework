@@ -402,6 +402,7 @@ class Model(object):
         # create the network
         #model = resnet3D.resnet34(nll = False)
         model = vnet.VNet(nll=True)
+        model = torch.nn.DataParallel(model, device_ids = self.params['ModelParams']['device_ids'])
 
         # train from scratch or continue from the snapshot
         if (self.params['ModelParams']['snapshot'] > 0):
