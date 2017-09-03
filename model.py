@@ -414,7 +414,8 @@ class Model(object):
             print "=> loaded checkpoint ", str(self.params['ModelParams']['snapshot'])
         else:
             model.apply(self.weights_init)
-        model = torch.nn.DataParallel(model, device_ids = self.params['ModelParams']['device_ids']) #place after the weights initialization
+        if len(self.params['ModelParams']['device_ids']) > 1:
+            model = torch.nn.DataParallel(model, device_ids = self.params['ModelParams']['device_ids']) #place after the weights initialization
         plt.ion()
 
         self.trainThread(model, trainData_loader)
