@@ -58,7 +58,9 @@ class Model(object):
         loss = 0.0
         accuracy = 0.0
         ResultImages = dict()
+        files_num = 0
         for origin_it, (data, target, fileName) in enumerate(self.validationData_loader):
+            files_num = files_num + 1
             (numpyResult, temploss) = self.produceSegmentationResult(
                 model, data, target, calLoss=True)
             loss += temploss
@@ -68,7 +70,7 @@ class Model(object):
             cv2.waitKey(0)
             cv2.imshow('1',numpyGTs[keysIMG[i]][:,:,32])
             cv2.waitKey(0)'''
-            right = float(np.sum(LabelResult == label[:, :, :]))
+            right = float(np.sum(LabelResult == target.squeeze_().numpy()[:, :, :]))
             tot = float(LabelResult.shape[0] * LabelResult.shape[1] * LabelResult.shape[2])
             accuracy += right / tot
         return (loss / files_num, accuracy /files_num)
@@ -103,6 +105,8 @@ class Model(object):
     def produceSegmentationResult(self, model, torchImage, torchGT=0, calLoss=False, returnProbability=False):
         ''' produce the segmentation result, one time one image'''
         model.eval()
+        torchImage.squeeze_()
+        torchGT.squeeze_()
         tempresult = np.zeros(
             (torchImage.size()[0], torchImage.size()[1], torchImage.size()[2]), dtype=np.float32)
         tempWeight = np.zeros(
@@ -112,8 +116,8 @@ class Model(object):
         depth = int(self.params['DataManagerParams']['VolSize'][2])
         batchSize = int(self.params['ModelParams']['batchsize'])
 
-        batchData = torch.FloatTensor([batchSize, 1, height, width, depth]).zero_()
-        batchLabel = torch.FloatTensor([batchSize, 1, height, width, depth]).zero_()
+        batchData = torch.FloatTensor(batchSize, 1, height, width, depth).zero_()
+        batchLabel = torch.FloatTensor(batchSize, 1, height, width, depth).zero_()
 
         stride_height = int(self.params['DataManagerParams']['TestStride'][0])
         stride_width = int(self.params['DataManagerParams']['TestStride'][1])
@@ -128,7 +132,7 @@ class Model(object):
         acc = 0
         tot = 0
         numNow = 0
-        batchCoordinates = np.zeros((numNow,6))
+        batchCoordinates = np.zeros((batchSize,6))
         # crop the image
         for y in xrange(ynum):
             for x in xrange(xnum):
@@ -405,7 +409,7 @@ class Model(object):
         
         self.datasetValidation = lungDataset.lungDataset(self.params['ModelParams']['dirValidation'], self.params['ModelParams']['dirResult'], 
                                                     transform = [ImageTransform3D.ToTensorSegmentation()])
-        self.validationData_loader = torch.utils.data.DataLoader(self.datasetValidation, batch_size= self.params['ModelParams']['batchsize'], shuffle=False, num_workers= self.params['ModelParams']['nProc'], pin_memory=True)
+        self.validationData_loader = torch.utils.data.DataLoader(self.datasetValidation, batch_size=1, shuffle=False, num_workers= self.params['ModelParams']['nProc'], pin_memory=True)
 
         # create the network
         #model = resnet3D.resnet34(nll = False)

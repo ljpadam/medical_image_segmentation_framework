@@ -30,7 +30,7 @@ if __name__ == '__main__':
     params['ModelParams']['numIterations'] = 80000000  # the number of total training iterations
     params['ModelParams']['baseLR'] = 0.00003  # the learning rate, initial one
     params['ModelParams']['nProc'] = 25  # the number of threads to do data augmentation
-    params['ModelParams']['testInterval'] = 2000  # the number of training interations between testing
+    params['ModelParams']['testInterval'] = 10  # the number of training interations between testing
     params['ModelParams']['device_ids'] = [0, 1] # the id of the GPUs for the multi-GPU
 
 
