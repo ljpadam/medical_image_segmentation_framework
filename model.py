@@ -100,14 +100,13 @@ class Model(object):
         print "loss: ", loss / len(keysIMG), " acc: ", accuracy / len(keysIMG)
         return ResultImages
 
-    def produceSegmentationResult(self, model, numpyImage, numpyGT=0, calLoss=False, returnProbability=False):
+    def produceSegmentationResult(self, model, torchImage, torchGT=0, calLoss=False, returnProbability=False):
         ''' produce the segmentation result, one time one image'''
         model.eval()
-        numpyImage = np.copy(numpyImage)
         tempresult = np.zeros(
-            (numpyImage.shape[0], numpyImage.shape[1], numpyImage.shape[2]), dtype=np.float32)
+            (torchImage.size()[0], torchImage.size()[1], torchImage.size()[2]), dtype=np.float32)
         tempWeight = np.zeros(
-            (numpyImage.shape[0], numpyImage.shape[1], numpyImage.shape[2]), dtype=np.float32)
+            (torchImage.size()[0], torchImage.size()[1], torchImage.size()[2]), dtype=np.float32)
         height = int(self.params['DataManagerParams']['VolSize'][0])
         width = int(self.params['DataManagerParams']['VolSize'][1])
         depth = int(self.params['DataManagerParams']['VolSize'][2])
@@ -119,9 +118,9 @@ class Model(object):
         stride_height = int(self.params['DataManagerParams']['TestStride'][0])
         stride_width = int(self.params['DataManagerParams']['TestStride'][1])
         stride_depth = int(self.params['DataManagerParams']['TestStride'][2])
-        whole_height = int(numpyImage.shape[0])
-        whole_width = int(numpyImage.shape[1])
-        whole_depth = int(numpyImage.shape[2])
+        whole_height = int(torchImage.size()[0])
+        whole_width = int(torchImage.size()[1])
+        whole_depth = int(torchImage.size()[2])
         ynum = int(math.ceil((whole_height - height) / float(stride_height))) + 1
         xnum = int(math.ceil((whole_width - width) / float(stride_width))) + 1
         znum = int(math.ceil((whole_depth - depth) / float(stride_depth))) + 1
@@ -153,9 +152,9 @@ class Model(object):
                         zstart = whole_depth - depth
                         zend = whole_depth
                     tot += 1
-                    batchData[numNow, 0, :, :, :] = numpyImage[ystart:yend, xstart:xend, zstart:zend]
+                    batchData[numNow, 0, :, :, :] = torchImage[ystart:yend, xstart:xend, zstart:zend]
                     if(calLoss):
-                        batchLabel[numNow, 0, :, :, :] = numpyGT[ystart:yend, xstart:xend, zstart:zend]
+                        batchLabel[numNow, 0, :, :, :] = torchGT[ystart:yend, xstart:xend, zstart:zend]
                     else:
                         batchLabel[numNow, 0, :, :, :] = np.zeros(numpyImage[ystart:yend, xstart:xend, zstart:zend].shape)
                     batchCoordinates[numNow] = np.asarray([ystart, yend, xstart, xend, zstart, zend])
