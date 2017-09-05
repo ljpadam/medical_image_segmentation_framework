@@ -15,12 +15,12 @@ if __name__ == '__main__':
     # params of the algorithm
 
     params['ModelParams']['device'] = 0 # the id of the GPU
-    params['ModelParams']['snapshot'] = 566000 #85000
-    params['ModelParams']['dirTrain'] = '/home/ljp/data/lung/manual/randomcrops/training' # the directory of training data
+    params['ModelParams']['snapshot'] = 0 #85000
+    params['ModelParams']['dirTrain'] = '/home/ljp/data/lung/manual/crops/training' # the directory of training data
     #params['ModelParams']['dirTest'] = '/home/ljp/from_Dfwang/WML/testing'
     # where we need to save the results (relative to the base path)
     params['ModelParams']['dirResult'] = "./result" # the directory of the results of testing data
-    params['ModelParams']['dirValidation']='/home/ljp/data/lung/manual/validation/' #the directory of the validation data
+    params['ModelParams']['dirValidation']='/home/ljp/data/lung/manual/crops/validation/' #the directory of the validation data
     params['ModelParams']['dirTest']='/home/ljp/data/lung/manual/testing/' #the directory of the testing data
     # params['ModelParams']['dirResult']="/home/ftp/data/output/" #where we need to save the results (relative to the base path)
     # where to save the models while training

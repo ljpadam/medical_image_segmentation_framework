@@ -22,7 +22,7 @@ from torch.autograd import Variable
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 import shutil
-import vnet2
+import vnet2 as vnet
 from functools import reduce
 import operator
 import time

@@ -1,3 +1,4 @@
+from __future__ import print_function
 import torch.utils.data as dataloader
 import copy
 import math
@@ -10,7 +11,7 @@ import skimage.transform
 import torch.utils.data as data
 import numpy as np
 import csv
-from __future__ import print_function
+
 
 class lungDataset(data.Dataset):
     def createImageFileList(self):
