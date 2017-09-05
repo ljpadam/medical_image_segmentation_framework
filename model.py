@@ -132,7 +132,7 @@ class Model(object):
         acc = 0
         tot = 0
         numNow = 0
-        batchCoordinates = np.zeros((batchSize,6))
+        batchCoordinates = np.zeros((batchSize,6), dtype = np.int)
         # crop the image
         for y in xrange(ynum):
             for x in xrange(xnum):
@@ -169,10 +169,10 @@ class Model(object):
                         # volatile is used in the input variable for the inference,
                         # which indicates the network doesn't need the gradients, and this flag will transfer to other variable
                         # as the network computating
-                        data = Variable(data, volatile=True).cuda()
+                        data = Variable(batchData, volatile=True).cuda()
                         #data = Variable(data).cuda()
                         #target = torch.from_numpy(batchLabel).long()
-                        target = Variable(target).cuda()
+                        target = Variable(batchLabel).cuda()
 
                         original_shape = np.squeeze(data).size()
                         output = model(data)
@@ -189,6 +189,8 @@ class Model(object):
                             temploss = temploss.cpu().data[i]
                             loss = loss + temploss
                             # print temptrain_loss
+
+                            print batchCoordinates[i]
                             tempresult[batchCoordinates[i][0]:batchCoordinates[i][1], batchCoordinates[i][2]:batchCoordinates[i][3],
                             batchCoordinates[i][4]:batchCoordinates[i][5]] = tempresult[
                             batchCoordinates[i][0]:batchCoordinates[i][1], batchCoordinates[i][2]:batchCoordinates[i][3],
@@ -198,6 +200,39 @@ class Model(object):
                             batchCoordinates[i][4]:batchCoordinates[i][5]] = tempWeight[
                             batchCoordinates[i][0]:batchCoordinates[i][1], batchCoordinates[i][2]:batchCoordinates[i][3],
                             batchCoordinates[i][4]:batchCoordinates[i][5]] + 1
+        if numNow>0:
+            data = Variable(batchData, volatile=True).cuda()
+            #data = Variable(data).cuda()
+            #target = torch.from_numpy(batchLabel).long()
+            target = Variable(batchLabel).cuda()
+
+            original_shape = data.squeeze().size()
+            output = model(data)
+            target = target.view(target.numel())
+            #temploss = F.nll_loss(output, target)
+            temploss = bioloss.dice_loss(output, target)
+            print output
+            print temploss
+            # be carefull output is the log-probability, not the raw probability
+            # max(1) return a tumple,the second item is the index of the max
+            output = output.data.max(1)[1]
+            output = output.view(original_shape)
+            output = output.cpu()
+
+            for i in xrange(numNow):
+                temploss = temploss.cpu().data[i]
+                loss = loss + temploss
+                # print temptrain_loss
+
+                tempresult[batchCoordinates[i][0]:batchCoordinates[i][1], batchCoordinates[i][2]:batchCoordinates[i][3],
+                batchCoordinates[i][4]:batchCoordinates[i][5]] = tempresult[
+                batchCoordinates[i][0]:batchCoordinates[i][1], batchCoordinates[i][2]:batchCoordinates[i][3],
+                batchCoordinates[i][4]:batchCoordinates[i][5]] + output[i].numpy()
+                
+                tempWeight[batchCoordinates[i][0]:batchCoordinates[i][1], batchCoordinates[i][2]:batchCoordinates[i][3],
+                batchCoordinates[i][4]:batchCoordinates[i][5]] = tempWeight[
+                batchCoordinates[i][0]:batchCoordinates[i][1], batchCoordinates[i][2]:batchCoordinates[i][3],
+                batchCoordinates[i][4]:batchCoordinates[i][5]] + 1
         tempresult = tempresult / tempWeight
         # important! change the model back to the training phase!
         model.train()
