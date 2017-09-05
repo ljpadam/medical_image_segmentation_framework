@@ -54,15 +54,13 @@ class Model(object):
 
     def getValidationLossAndAccuracy(self, model):
         '''get the segmentation loss and accuracy of the validation data '''
-        files_num = len(self.dataManagerValidation.fileList)
+        #files_num = len(self.dataManagerValidation.fileList)
         loss = 0.0
         accuracy = 0.0
         ResultImages = dict()
-        for i in xrange(files_num):
-            img = self.dataManagerValidation.loadImage(self.dataManagerValidation.fileList[i])
-            label = self.dataManagerValidation.loadGT(self.dataManagerValidation.fileList[i])
+        for origin_it, (data, target, fileName) in enumerate(self.validationData_loader):
             (numpyResult, temploss) = self.produceSegmentationResult(
-                model, img, label, calLoss=True)
+                model, data, target, calLoss=True)
             loss += temploss
             LabelResult = numpyResult
 
