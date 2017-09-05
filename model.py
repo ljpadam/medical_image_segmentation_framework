@@ -159,7 +159,7 @@ class Model(object):
                     else:
                         batchLabel[numNow, 0, :, :, :] = np.zeros(numpyImage[ystart:yend, xstart:xend, zstart:zend].shape)
                     batchCoordinates[numNow] = np.asarray([ystart, yend, xstart, xend, zstart, zend])
-                    numNow++
+                    numNow = numNow + 1
                     if numNow == batchSize:
                         numNow = 0
                         #data = torch.from_numpy(batchData).float()
