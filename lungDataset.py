@@ -112,5 +112,5 @@ class lungDataset(data.Dataset):
             for f in self.transform:
                 fileName = self.fileList[index]
                 img, label = f(img, label, fileName, None)
-        return img, label
+        return img, label, fileName
     

@@ -83,9 +83,9 @@ class Model(object):
         accuracy = 0.0
         ResultImages = dict()
         keysIMG = numpyImages.keys()
-        for i in xrange(len(keysIMG)):
+        for origin_it, (data, target, fileName) in enumerate(self.validationData_loader):
             (numpyResult, temploss) = self.produceSegmentationResult(
-                model, numpyImages[keysIMG[i]], numpyGTs[keysIMG[i]], calLoss=True, returnProbability=returnProbability)
+                model, data, target, calLoss=True, returnProbability=returnProbability)
             loss += temploss
             if returnProbability:
                 LabelResult = numpyResult
@@ -113,9 +113,10 @@ class Model(object):
         height = int(self.params['DataManagerParams']['VolSize'][0])
         width = int(self.params['DataManagerParams']['VolSize'][1])
         depth = int(self.params['DataManagerParams']['VolSize'][2])
+        batchSize = int(self.params['ModelParams']['batchsize'])
 
-        batchData = np.zeros([1, 1, height, width, depth])
-        batchLabel = np.zeros([1, 1, height, width, depth])
+        batchData = torch.FloatTensor([batchSize, 1, height, width, depth]).zero_()
+        batchLabel = torch.FloatTensor([batchSize, 1, height, width, depth]).zero_()
 
         stride_height = int(self.params['DataManagerParams']['TestStride'][0])
         stride_width = int(self.params['DataManagerParams']['TestStride'][1])
@@ -129,6 +130,8 @@ class Model(object):
         loss = 0
         acc = 0
         tot = 0
+        numNow = 0
+        batchCoordinates = np.zeros((numNow,6))
         # crop the image
         for y in xrange(ynum):
             for x in xrange(xnum):
@@ -152,38 +155,48 @@ class Model(object):
                         zstart = whole_depth - depth
                         zend = whole_depth
                     tot += 1
-                    batchData[0, 0, :, :, :] = numpyImage[ystart:yend, xstart:xend, zstart:zend]
+                    batchData[numNow, 0, :, :, :] = numpyImage[ystart:yend, xstart:xend, zstart:zend]
                     if(calLoss):
-                        batchLabel[0, 0, :, :, :] = numpyGT[ystart:yend, xstart:xend, zstart:zend]
+                        batchLabel[numNow, 0, :, :, :] = numpyGT[ystart:yend, xstart:xend, zstart:zend]
                     else:
-                        batchLabel[0, 0, :, :, :] = np.zeros(numpyImage[ystart:yend, xstart:xend, zstart:zend].shape)
-                    data = torch.from_numpy(batchData).float()
-                    # volatile is used in the input variable for the inference,
-                    # which indicates the network doesn't need the gradients, and this flag will transfer to other variable
-                    # as the network computating
-                    data = Variable(data, volatile=True).cuda()
-                    #data = Variable(data).cuda()
-                    target = torch.from_numpy(batchLabel).long()
-                    target = Variable(target).cuda()
+                        batchLabel[numNow, 0, :, :, :] = np.zeros(numpyImage[ystart:yend, xstart:xend, zstart:zend].shape)
+                    batchCoordinates[numNow] = np.asarray([ystart, yend, xstart, xend, zstart, zend])
+                    numNow++
+                    if numNow == batchSize:
+                        numNow = 0
+                        #data = torch.from_numpy(batchData).float()
+                        # volatile is used in the input variable for the inference,
+                        # which indicates the network doesn't need the gradients, and this flag will transfer to other variable
+                        # as the network computating
+                        data = Variable(data, volatile=True).cuda()
+                        #data = Variable(data).cuda()
+                        #target = torch.from_numpy(batchLabel).long()
+                        target = Variable(target).cuda()
 
-                    original_shape = data[0, 0].size()
-                    output = model(data)
-                    target = target.view(target.numel())
-                    #temploss = F.nll_loss(output, target)
-                    temploss = bioloss.dice_loss(output, target)
-                    # be carefull output is the log-probability, not the raw probability
-                    # max(1) return a tumple,the second item is the index of the max
-                    output = output.data.max(1)[1]
-                    output = output.view(original_shape)
-                    output = output.cpu()
+                        original_shape = np.squeeze(data).size()
+                        output = model(data)
+                        target = target.view(target.numel())
+                        #temploss = F.nll_loss(output, target)
+                        temploss = bioloss.dice_loss(output, target)
+                        # be carefull output is the log-probability, not the raw probability
+                        # max(1) return a tumple,the second item is the index of the max
+                        output = output.data.max(1)[1]
+                        output = output.view(original_shape)
+                        output = output.cpu()
 
-                    temploss = temploss.cpu().data[0]
-                    loss = loss + temploss
-                    # print temptrain_loss
-                    tempresult[ystart:yend, xstart:xend, zstart:zend] = tempresult[
-                        ystart:yend, xstart:xend, zstart:zend] + output.numpy()
-                    tempWeight[ystart:yend, xstart:xend, zstart:zend] = tempWeight[
-                        ystart:yend, xstart:xend, zstart:zend] + 1
+                        for i in xrange(batchSize):
+                            temploss = temploss.cpu().data[i]
+                            loss = loss + temploss
+                            # print temptrain_loss
+                            tempresult[batchCoordinates[i][0]:batchCoordinates[i][1], batchCoordinates[i][2]:batchCoordinates[i][3],
+                            batchCoordinates[i][4]:batchCoordinates[i][5]] = tempresult[
+                            batchCoordinates[i][0]:batchCoordinates[i][1], batchCoordinates[i][2]:batchCoordinates[i][3],
+                            batchCoordinates[i][4]:batchCoordinates[i][5]] + output[i].numpy()
+                            
+                            tempWeight[batchCoordinates[i][0]:batchCoordinates[i][1], batchCoordinates[i][2]:batchCoordinates[i][3],
+                            batchCoordinates[i][4]:batchCoordinates[i][5]] = tempWeight[
+                            batchCoordinates[i][0]:batchCoordinates[i][1], batchCoordinates[i][2]:batchCoordinates[i][3],
+                            batchCoordinates[i][4]:batchCoordinates[i][5]] + 1
         tempresult = tempresult / tempWeight
         # important! change the model back to the training phase!
         model.train()
@@ -269,7 +282,7 @@ class Model(object):
         name = prefix_save + str(state['iteration']) + '_' + filename
         torch.save(state, name)
 
-    def trainThread(self, model, trainData_loader):
+    def trainThread(self, model):
         '''train the network and plot the training curve'''
         nr_iter = self.params['ModelParams']['numIterations']
         batchsize = self.params['ModelParams']['batchsize']
@@ -292,7 +305,7 @@ class Model(object):
         
         it = 0
         while True:
-            for origin_it, (data, target) in enumerate(trainData_loader):
+            for origin_it, (data, target, fileName) in enumerate(self.trainData_loader):
                 it += 1
                 
                 optimizer.zero_grad()
@@ -391,12 +404,11 @@ class Model(object):
         # we define here a data manager object
         self.datasetTrain = lungDataset.lungDataset(self.params['ModelParams']['dirTrain'], self.params['ModelParams']['dirResult'], 
                                                     transform = [ImageTransform3D.RandomCropSegmentation3D(self.params['DataManagerParams']['VolSize'], containLeision=2), ImageTransform3D.RandomRotateSegmentation3D(), ImageTransform3D.ToTensorSegmentation()])
-        trainData_loader = torch.utils.data.DataLoader(self.datasetTrain, batch_size= self.params['ModelParams']['batchsize'], shuffle=True, num_workers= self.params['ModelParams']['nProc'], pin_memory=True)
+        self.trainData_loader = torch.utils.data.DataLoader(self.datasetTrain, batch_size= self.params['ModelParams']['batchsize'], shuffle=True, num_workers= self.params['ModelParams']['nProc'], pin_memory=True)
         
-        self.dataManagerValidation = DM.DataManagerLazy(self.params['ModelParams']['dirValidation'], 
-                                                    self.params['ModelParams']['dirResult'], 
-                                                    self.params['DataManagerParams'])
-        self.dataManagerValidation.loadTestData()
+        self.datasetValidation = lungDataset.lungDataset(self.params['ModelParams']['dirValidation'], self.params['ModelParams']['dirResult'], 
+                                                    transform = [ImageTransform3D.ToTensorSegmentation()])
+        self.validationData_loader = torch.utils.data.DataLoader(self.datasetValidation, batch_size= self.params['ModelParams']['batchsize'], shuffle=False, num_workers= self.params['ModelParams']['nProc'], pin_memory=True)
 
         # create the network
         #model = resnet3D.resnet34(nll = False)
@@ -417,7 +429,7 @@ class Model(object):
             model = torch.nn.DataParallel(model, device_ids = self.params['ModelParams']['device_ids']) #place after the weights initialization
         plt.ion()
 
-        self.trainThread(model, trainData_loader)
+        self.trainThread(model)
 
     def test(self, snapnumber):
         # produce the results of the testing data
