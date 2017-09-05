@@ -28,7 +28,7 @@ if __name__ == '__main__':
     params['ModelParams']['tailSnapshots'] = 'lung/vnet/' # the full path of the model snapshots is the join of dirsnapshots and presnapshots
     params['ModelParams']['batchsize'] = 10  # the batch size
     params['ModelParams']['numIterations'] = 80000000  # the number of total training iterations
-    params['ModelParams']['baseLR'] = 0.00003  # the learning rate, initial one
+    params['ModelParams']['baseLR'] = 0.003  # the learning rate, initial one
     params['ModelParams']['nProc'] = 25  # the number of threads to do data augmentation
     params['ModelParams']['testInterval'] = 200  # the number of training interations between testing
     params['ModelParams']['device_ids'] = [0, 1] # the id of the GPUs for the multi-GPU
