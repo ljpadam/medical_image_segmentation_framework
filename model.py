@@ -22,7 +22,7 @@ from torch.autograd import Variable
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 import shutil
-import vnet
+import vnet2
 from functools import reduce
 import operator
 import time
@@ -169,8 +169,8 @@ class Model(object):
                     original_shape = data[0, 0].size()
                     output = model(data)
                     target = target.view(target.numel())
-                    temploss = F.nll_loss(output, target)
-                    #temploss = bioloss.dice_loss(output, target)
+                    #temploss = F.nll_loss(output, target)
+                    temploss = bioloss.dice_loss(output, target)
                     # be carefull output is the log-probability, not the raw probability
                     # max(1) return a tumple,the second item is the index of the max
                     output = output.data.max(1)[1]
@@ -295,7 +295,6 @@ class Model(object):
             for origin_it, (data, target) in enumerate(trainData_loader):
                 it += 1
                 
-
                 optimizer.zero_grad()
 
                 data = data.cuda()
@@ -305,8 +304,8 @@ class Model(object):
 
                 output = model(data)
                 target = target.view(target.numel())
-                loss = F.nll_loss(output, target)
-                #loss = bioloss.dice_loss(output, target)
+                #loss = F.nll_loss(output, target)
+                loss = bioloss.dice_loss(output, target)
                 loss.backward()
                 optimizer.step()
 
@@ -401,7 +400,7 @@ class Model(object):
 
         # create the network
         #model = resnet3D.resnet34(nll = False)
-        model = vnet.VNet(nll=True)
+        model = vnet.VNet2(nll=False)
 
         # train from scratch or continue from the snapshot
         if (self.params['ModelParams']['snapshot'] > 0):

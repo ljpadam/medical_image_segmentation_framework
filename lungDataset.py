@@ -10,6 +10,7 @@ import skimage.transform
 import torch.utils.data as data
 import numpy as np
 import csv
+from __future__ import print_function
 
 class lungDataset(data.Dataset):
     def createImageFileList(self):
@@ -19,10 +20,10 @@ class lungDataset(data.Dataset):
                 if 'img' in file:
                     self.fileList.append(f)
                     break
-
-        print 'FILE LIST: ' + str(self.fileList)
+        print ('FILE LIST: ' + str(self.fileList))
+       
     
-    def getNumpyData_Normalization(self, img, key):
+    def getNumpyData_forImg(self, img, key):
         ''' load numpy data from sitk data'''
 
         img = sitk.GetArrayFromImage(img).astype(dtype=np.float32)
@@ -37,16 +38,16 @@ class lungDataset(data.Dataset):
         #skimage can only operate on the float(range: -1 to 1) and int image
         #reserve_range : bool, Whether to keep the original range of values. Otherwise, the input image is converted according to the conventions of img_as_float.
         #ret[key] = skimage.transform.resize(ret[key],self.params['WholeSize'],order=3, mode='reflect', preserve_range=True)
-        #print ret[key].shape
         # clip the top 3% intensity, and normalize the img into the range of 0~1
         # max_value = np.sort(img, axis=None)[int(img.size*0.97)]
         # #ret[key][ret[key]>max_value] = max_value
         # img = (img)/max_value
         '''cv2.imshow("",ret[key][:,:,60])
         cv2.waitKey(0)'''
+        #img = (img-20)/200.0
         return img
 
-    def getNumpyData(self, img, key):
+    def getNumpyData_forLabel(self, img, key):
            
         img = sitk.GetArrayFromImage(img).astype(dtype=np.float32)
         self.originalSizes[key] = img.shape
@@ -90,17 +91,17 @@ class lungDataset(data.Dataset):
         self.lesionPositions = {}
     
     def __len__(self):
-        print 'totally ', len(self.fileList), ' samples'
+        print ('totally ', len(self.fileList), ' samples')
         return len(self.fileList)
 
     def __getitem__(self, index):
         img = sitk.Cast(sitk.ReadImage(
             join(join(self.srcFolder, self.fileList[index]), 'img.nii')), sitk.sitkFloat32)
-        img = self.getNumpyData_Normalization(img, self.fileList[index])
+        img = self.getNumpyData_forImg(img, self.fileList[index])
 
         label = sitk.Cast(sitk.ReadImage(
             join(join(self.srcFolder, self.fileList[index]), 'label.nii')), sitk.sitkFloat32)
-        label = self.getNumpyData(label, self.fileList[index])
+        label = self.getNumpyData_forLabel(label, self.fileList[index])
         if self.training:
             pass
             #self.loadLesionPositions(self.fileList[index])
