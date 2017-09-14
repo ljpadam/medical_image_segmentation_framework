@@ -77,13 +77,11 @@ class Model(object):
 
     def getTestResultImages(self, model, returnProbability=False):
         ''' return the segmentation results of the testing data'''
-        numpyImages = self.dataManagerTesting.numpyImages
-        numpyGTs = self.dataManagerTesting.numpyGTs
         loss = 0.0
         accuracy = 0.0
         ResultImages = dict()
         keysIMG = numpyImages.keys()
-        for origin_it, (data, target, fileName) in enumerate(self.validationData_loader):
+        for origin_it, (data, target, fileName) in enumerate(self.testingData_loader):
             (numpyResult, temploss) = self.produceSegmentationResult(
                 model, data, target, calLoss=True, returnProbability=returnProbability)
             loss += temploss
@@ -469,11 +467,9 @@ class Model(object):
     def test(self, snapnumber):
         # produce the results of the testing data
         torch.cuda.set_device(self.params['ModelParams']['device'])
-        self.dataManagerTesting = DMoriginal.DataManager(self.params['ModelParams']['dirTest'], 
-                                                 self.params['ModelParams']['dirResult'], 
-                                                 self.params['DataManagerParams'], 
-                                                 self.params['TestParams']['ProbabilityMap'])
-        self.dataManagerTesting.loadTestData()
+        self.datasetTesting = lungDataset.lungDataset(self.params['ModelParams']['dirTest'], self.params['ModelParams']['dirResult'], 
+                                                    transform = [ImageTransform3D.ToTensorSegmentation()])
+        self.testingData_loader = torch.utils.data.DataLoader(self.datasetTest, batch_size=1, shuffle=False, num_workers= self.params['ModelParams']['nProc'], pin_memory=True)
         
         #model = resnet3D.resnet34(nll = False)
         model = vnet.VNet2(nll=False)
