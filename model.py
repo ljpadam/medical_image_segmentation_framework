@@ -117,7 +117,7 @@ class Model(object):
         batchSize = int(self.params['ModelParams']['batchsize'])
 
         batchData = torch.FloatTensor(batchSize, 1, height, width, depth).zero_()
-        batchLabel = torch.FloatTensor(batchSize, 1, height, width, depth).zero_()
+        batchLabel = torch.LongTensor(batchSize, 1, height, width, depth).zero_()
 
         stride_height = int(self.params['DataManagerParams']['TestStride'][0])
         stride_width = int(self.params['DataManagerParams']['TestStride'][1])
@@ -177,8 +177,8 @@ class Model(object):
                         original_shape = np.squeeze(data).size()
                         output = model(data)
                         target = target.view(target.numel())
-                        #temploss = F.nll_loss(output, target)
-                        temploss = bioloss.dice_loss(output, target)
+                        temploss = F.nll_loss(output, target)
+                        #temploss = bioloss.dice_loss(output, target)
                         # be carefull output is the log-probability, not the raw probability
                         # max(1) return a tumple,the second item is the index of the max
                         output = output.data.max(1)[1]
@@ -189,7 +189,7 @@ class Model(object):
                             
                             # print temptrain_loss
 
-                            print batchCoordinates[i]
+                            #print batchCoordinates[i]
                             tempresult[batchCoordinates[i][0]:batchCoordinates[i][1], batchCoordinates[i][2]:batchCoordinates[i][3],
                             batchCoordinates[i][4]:batchCoordinates[i][5]] = tempresult[
                             batchCoordinates[i][0]:batchCoordinates[i][1], batchCoordinates[i][2]:batchCoordinates[i][3],
@@ -209,8 +209,8 @@ class Model(object):
             original_shape = data.squeeze().size()
             output = model(data)
             target = target.view(target.numel())
-            #temploss = F.nll_loss(output, target)
-            temploss = bioloss.dice_loss(output, target)
+            temploss = F.nll_loss(output, target)
+            #temploss = bioloss.dice_loss(output, target)
             # be carefull output is the log-probability, not the raw probability
             # max(1) return a tumple,the second item is the index of the max
             output = output.data.max(1)[1]
@@ -350,8 +350,8 @@ class Model(object):
 
                 output = model(data)
                 target = target.view(target.numel())
-                #loss = F.nll_loss(output, target)
-                loss = bioloss.dice_loss(output, target)
+                loss = F.nll_loss(output, target)
+                #loss = bioloss.dice_loss(output, target)
                 loss.backward()
                 optimizer.step()
 
@@ -445,7 +445,10 @@ class Model(object):
 
         # create the network
         #model = resnet3D.resnet34(nll = False)
-        model = vnet.VNet2(nll=False)
+        model = vnet.VNet2(nll=True)
+
+        if len(self.params['ModelParams']['device_ids']) > 1:
+            model = torch.nn.DataParallel(model, device_ids = self.params['ModelParams']['device_ids']) #if finetune from multi-gpu, place before the weight inilization, otherwise place after the weights initialization
 
         # train from scratch or continue from the snapshot
         if (self.params['ModelParams']['snapshot'] > 0):
@@ -458,8 +461,7 @@ class Model(object):
             print "=> loaded checkpoint ", str(self.params['ModelParams']['snapshot'])
         else:
             model.apply(self.weights_init)
-        if len(self.params['ModelParams']['device_ids']) > 1:
-            model = torch.nn.DataParallel(model, device_ids = self.params['ModelParams']['device_ids']) #place after the weights initialization
+        
         plt.ion()
 
         self.trainThread(model)
@@ -474,7 +476,10 @@ class Model(object):
         self.dataManagerTesting.loadTestData()
         
         #model = resnet3D.resnet34(nll = False)
-        model = vnet.VNet(nll=False)
+        model = vnet.VNet2(nll=False)
+
+        if len(self.params['ModelParams']['device_ids']) > 1:
+            model = torch.nn.DataParallel(model, device_ids = self.params['ModelParams']['device_ids']) #if finetune from multi-gpu, place before the weight inilization, otherwise place after the weights initialization
         
         prefix_save = os.path.join(self.params['ModelParams']['dirSnapshots'],
                                    self.params['ModelParams']['tailSnapshots'])

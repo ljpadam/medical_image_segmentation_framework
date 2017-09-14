@@ -45,7 +45,7 @@ class lungDataset(data.Dataset):
         # img = (img)/max_value
         '''cv2.imshow("",ret[key][:,:,60])
         cv2.waitKey(0)'''
-        img = (img-20)/200.0
+        #img = (img-20)/200.0
         return img
 
     def getNumpyData_forLabel(self, img, key):
