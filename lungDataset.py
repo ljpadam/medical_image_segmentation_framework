@@ -108,9 +108,10 @@ class lungDataset(data.Dataset):
             #self.loadLesionPositions(self.fileList[index])
         # img = np.zeros([100,100,100])
         # label = np.ones([100,100,100])
+        fileName = self.fileList[index]
         if self.transform:
             for f in self.transform:
-                fileName = self.fileList[index]
                 img, label = f(img, label, fileName, None)
+        #print(fileName)
         return img, label, fileName
     

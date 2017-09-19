@@ -80,8 +80,9 @@ class Model(object):
         loss = 0.0
         accuracy = 0.0
         ResultImages = dict()
-        keysIMG = numpyImages.keys()
+        files_num = 0;
         for origin_it, (data, target, fileName) in enumerate(self.testingData_loader):
+            files_num = files_num+1
             (numpyResult, temploss) = self.produceSegmentationResult(
                 model, data, target, calLoss=True, returnProbability=returnProbability)
             loss += temploss
@@ -93,11 +94,11 @@ class Model(object):
             cv2.waitKey(0)
             cv2.imshow('1',numpyGTs[keysIMG[i]][:,:,32])
             cv2.waitKey(0)'''
-            right = float(np.sum(LabelResult == numpyGTs[keysIMG[i]][:, :, :]))
+            right = float(np.sum(LabelResult == target.squeeze_().numpy()[:, :, :]))
             tot = float(LabelResult.shape[0] * LabelResult.shape[1] * LabelResult.shape[2])
             accuracy += right / tot
-            ResultImages[keysIMG[i]] = LabelResult
-        print "loss: ", loss / len(keysIMG), " acc: ", accuracy / len(keysIMG)
+            ResultImages[fileName[0]] = LabelResult #strange, my function return string, but pytorch change it to list
+        print "loss: ", loss / files_num, " acc: ", accuracy / files_num
         return ResultImages
 
     def produceSegmentationResult(self, model, torchImage, torchGT=0, calLoss=False, returnProbability=False):
@@ -469,7 +470,7 @@ class Model(object):
         torch.cuda.set_device(self.params['ModelParams']['device'])
         self.datasetTesting = lungDataset.lungDataset(self.params['ModelParams']['dirTest'], self.params['ModelParams']['dirResult'], 
                                                     transform = [ImageTransform3D.ToTensorSegmentation()])
-        self.testingData_loader = torch.utils.data.DataLoader(self.datasetTest, batch_size=1, shuffle=False, num_workers= self.params['ModelParams']['nProc'], pin_memory=True)
+        self.testingData_loader = torch.utils.data.DataLoader(self.datasetTesting, batch_size=1, shuffle=False, num_workers= self.params['ModelParams']['nProc'], pin_memory=True)
         
         #model = resnet3D.resnet34(nll = False)
         model = vnet.VNet2(nll=False)
