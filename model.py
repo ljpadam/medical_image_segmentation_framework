@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
@@ -34,6 +35,7 @@ import DataManager as DMoriginal
 import lungDataset
 import ImageTransform3D
 import torchvision.transforms as transforms
+import SimpleITK as sitk
 
 
 class Model(object):
@@ -74,13 +76,38 @@ class Model(object):
             tot = float(LabelResult.shape[0] * LabelResult.shape[1] * LabelResult.shape[2])
             accuracy += right / tot
         return (loss / files_num, accuracy /files_num)
+    
+    def writeResultsFromNumpyLabel(self, result, key):
+        ''' save the segmentation results to the result directory'''
+        if self.datasetTesting.dimensionMin[key] == 0:
+            result = np.transpose(result, [2, 0, 1])
+        elif self.datasetTesting.dimensionMin[key] == 1:
+            result = np.transpose(result, [0, 2, 1])
+        
+        if result.shape != self.datasetTesting.originalSizes[key]:
+            print ("result shape is wrong!!!")
 
-    def getTestResultImages(self, model, returnProbability=False):
+        if self.probabilityMap:
+            result = result * 255
+        else:
+            result = result>0.5
+            result = result.astype(np.uint8)
+        toWrite = sitk.GetImageFromArray(result)
+
+        toWrite = sitk.Cast(toWrite, sitk.sitkUInt8)
+
+        writer = sitk.ImageFileWriter()
+        filename, ext = splitext(key)
+        # print join(self.resultsDir, filename + '_result' + ext)
+        writer.SetFileName(join(self.datasetTesting.resultsDir, filename + '_result.nii'))
+        writer.Execute(toWrite)
+
+    def getAndSaveTestResultImages(self, model, returnProbability=False):
         ''' return the segmentation results of the testing data'''
         loss = 0.0
         accuracy = 0.0
         ResultImages = dict()
-        files_num = 0;
+        files_num = 0
         for origin_it, (data, target, fileName) in enumerate(self.testingData_loader):
             files_num = files_num+1
             (numpyResult, temploss) = self.produceSegmentationResult(
@@ -98,7 +125,8 @@ class Model(object):
             tot = float(LabelResult.shape[0] * LabelResult.shape[1] * LabelResult.shape[2])
             accuracy += right / tot
             ResultImages[fileName[0]] = LabelResult #strange, my function return string, but pytorch change it to list
-        print "loss: ", loss / files_num, " acc: ", accuracy / files_num
+            self.writeResultsFromNumpyLabel(LabelResult, fileName[0])
+        print( "loss: ", loss / files_num, " acc: ", accuracy / files_num)
         return ResultImages
 
     def produceSegmentationResult(self, model, torchImage, torchGT=0, calLoss=False, returnProbability=False):
@@ -365,7 +393,7 @@ class Model(object):
 
                     train_accuracy[it / train_interval] = tempaccuracy / (train_interval)
                     train_loss[it / train_interval] = temptrain_loss / (train_interval)
-                    print time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), " training: iter: ", self.params['ModelParams']['snapshot'] + it, " loss: ", train_loss[it / train_interval], ' acc: ', train_accuracy[it / train_interval]
+                    print( time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), " training: iter: ", self.params['ModelParams']['snapshot'] + it, " loss: ", train_loss[it / train_interval], ' acc: ', train_accuracy[it / train_interval])
                     plt.clf()
                     plt.subplot(2, 2, 1)
                     plt.plot(range(1, it / train_interval), train_loss[1:it / train_interval])
@@ -404,10 +432,10 @@ class Model(object):
                                             'best_acc': False},
                                             self.params['ModelParams']['dirSnapshots'], self.params['ModelParams']['tailSnapshots'])
 
-                    print time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-                    print "\ntesting: best_acc: " + str(self.best_iteration_acc) + " loss: " + str(self.min_accuracy_loss) + " accuracy: " + str(self.max_accuracy)
-                    print "testing: best_loss: " + str(self.best_iteration_loss) + " loss: " + str(self.min_loss) + " accuracy: " + str(self.min_loss_accuracy)
-                    print "testing: iteration: " + str(self.params['ModelParams']['snapshot'] + it) + " loss: " + str(testloss[it / test_interval]) + " accuracy: " + str(testaccuracy[it / test_interval]) + '\n'
+                    print( time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+                    print( "\ntesting: best_acc: " + str(self.best_iteration_acc) + " loss: " + str(self.min_accuracy_loss) + " accuracy: " + str(self.max_accuracy))
+                    print ("testing: best_loss: " + str(self.best_iteration_loss) + " loss: " + str(self.min_loss) + " accuracy: " + str(self.min_loss_accuracy))
+                    print ("testing: iteration: " + str(self.params['ModelParams']['snapshot'] + it) + " loss: " + str(testloss[it / test_interval]) + " accuracy: " + str(testaccuracy[it / test_interval]) + '\n')
                     plt.clf()
                     plt.subplot(2, 2, 1)
                     plt.plot(range(1, it / 100), train_loss[1:it / 100])
@@ -451,13 +479,13 @@ class Model(object):
 
         # train from scratch or continue from the snapshot
         if (self.params['ModelParams']['snapshot'] > 0):
-            print "=> loading checkpoint ", str(self.params['ModelParams']['snapshot'])
+            print( "=> loading checkpoint ", str(self.params['ModelParams']['snapshot']))
             prefix_save = os.path.join(self.params['ModelParams']['dirSnapshots'],
                                        self.params['ModelParams']['tailSnapshots'])
             name = prefix_save + str(self.params['ModelParams']['snapshot']) + '_' + "checkpoint.pth.tar"
             checkpoint = torch.load(name)
             model.load_state_dict(checkpoint['state_dict'])
-            print "=> loaded checkpoint ", str(self.params['ModelParams']['snapshot'])
+            print ("=> loaded checkpoint ", str(self.params['ModelParams']['snapshot']))
         else:
             model.apply(self.weights_init)
         
@@ -486,7 +514,5 @@ class Model(object):
         model.load_state_dict(checkpoint['state_dict'])
         model.cuda()
         #produce the segementation results
-        results = self.getTestResultImages(model, self.params['TestParams']['ProbabilityMap'])
-
-        for key in results:
-            self.dataManagerTesting.writeResultsFromNumpyLabel(results[key], key)
+        results = self.getAndSaveTestResultImages(model, self.params['TestParams']['ProbabilityMap'])
+        
