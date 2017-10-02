@@ -20,6 +20,8 @@ class lungDataset(data.Dataset):
             for file in listdir(join(self.srcFolder, f)):
                 if 'img' in file:
                     self.fileList.append(f)
+                    self.originalSizes[f] = ''# the dict in python is not thread safe
+                    self.dimensionMin[f] = ''
                     break
         print ('FILE LIST: ' + str(self.fileList))
        
@@ -28,11 +30,11 @@ class lungDataset(data.Dataset):
         ''' load numpy data from sitk data'''
 
         img = sitk.GetArrayFromImage(img).astype(dtype=np.float32)
-        self.originalSizes[key]=img.shape
-        self.dimensionMin[key] = np.argmin(img.shape)
-        if self.dimensionMin[key] == 0:
+        originalSizes=img.shape
+        dimensionMin = np.argmin(img.shape)
+        if dimensionMin == 0:
             img = np.transpose(img, [1,2,0])
-        elif self.dimensionMin[key] == 1:
+        elif dimensionMin == 1:
             img = np.transpose(img, [0,2,1])
 
         # order =3 Bi-cubic, resize the whole image to the same size
@@ -46,7 +48,8 @@ class lungDataset(data.Dataset):
         '''cv2.imshow("",ret[key][:,:,60])
         cv2.waitKey(0)'''
         #img = (img-20)/200.0
-        return img
+        originalSizes = np.asarray(originalSizes)
+        return img,{'dimensionMin': dimensionMin, 'originalSizes': originalSizes}
 
     def getNumpyData_forLabel(self, img, key):
            
@@ -85,9 +88,10 @@ class lungDataset(data.Dataset):
         self.srcFolder = srcFolder
         self.resultsDir = resultsDir
         self.probabilityMap = probabilityMap
-        self.createImageFileList()
         self.originalSizes = {}
         self.dimensionMin = {}
+        self.createImageFileList()
+        
         self.training = training
         self.lesionPositions = {}
     
@@ -98,7 +102,7 @@ class lungDataset(data.Dataset):
     def __getitem__(self, index):
         img = sitk.Cast(sitk.ReadImage(
             join(join(self.srcFolder, self.fileList[index]), 'img.nii')), sitk.sitkFloat32)
-        img = self.getNumpyData_forImg(img, self.fileList[index])
+        img ,imgInformation = self.getNumpyData_forImg(img, self.fileList[index])
 
         label = sitk.Cast(sitk.ReadImage(
             join(join(self.srcFolder, self.fileList[index]), 'label.nii')), sitk.sitkFloat32)
@@ -113,5 +117,6 @@ class lungDataset(data.Dataset):
             for f in self.transform:
                 img, label = f(img, label, fileName, None)
         #print(fileName)
-        return img, label, fileName
+        imgInformation['filename'] = fileName
+        return img, label, imgInformation
     

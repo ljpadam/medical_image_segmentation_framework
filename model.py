@@ -36,6 +36,7 @@ import lungDataset
 import ImageTransform3D
 import torchvision.transforms as transforms
 import SimpleITK as sitk
+from os.path import isfile, join, splitext
 
 
 class Model(object):
@@ -77,17 +78,17 @@ class Model(object):
             accuracy += right / tot
         return (loss / files_num, accuracy /files_num)
     
-    def writeResultsFromNumpyLabel(self, result, key):
+    def writeResultsFromNumpyLabel(self, result, imgInformation):
         ''' save the segmentation results to the result directory'''
-        if self.datasetTesting.dimensionMin[key] == 0:
+        if imgInformation['dimensionMin'][0] == 0: #pytorch dataset change all the data to tensor, we have to extract the first element
             result = np.transpose(result, [2, 0, 1])
-        elif self.datasetTesting.dimensionMin[key] == 1:
+        elif imgInformation['dimensionMin'][0] == 1:
             result = np.transpose(result, [0, 2, 1])
         
-        if result.shape != self.datasetTesting.originalSizes[key]:
+        if not (np.asarray(result.shape) == imgInformation['originalSizes'].numpy()).all():
             print ("result shape is wrong!!!")
 
-        if self.probabilityMap:
+        if self.datasetTesting.probabilityMap:
             result = result * 255
         else:
             result = result>0.5
@@ -97,9 +98,9 @@ class Model(object):
         toWrite = sitk.Cast(toWrite, sitk.sitkUInt8)
 
         writer = sitk.ImageFileWriter()
-        filename, ext = splitext(key)
+        filename, ext = splitext(imgInformation['filename'][0])
         # print join(self.resultsDir, filename + '_result' + ext)
-        writer.SetFileName(join(self.datasetTesting.resultsDir, filename + '_result.nii'))
+        writer.SetFileName(join(self.datasetTesting.resultsDir, filename + '_result.nii.gz'))
         writer.Execute(toWrite)
 
     def getAndSaveTestResultImages(self, model, returnProbability=False):
@@ -108,7 +109,7 @@ class Model(object):
         accuracy = 0.0
         ResultImages = dict()
         files_num = 0
-        for origin_it, (data, target, fileName) in enumerate(self.testingData_loader):
+        for origin_it, (data, target, imgInformation) in enumerate(self.testingData_loader):
             files_num = files_num+1
             (numpyResult, temploss) = self.produceSegmentationResult(
                 model, data, target, calLoss=True, returnProbability=returnProbability)
@@ -124,8 +125,8 @@ class Model(object):
             right = float(np.sum(LabelResult == target.squeeze_().numpy()[:, :, :]))
             tot = float(LabelResult.shape[0] * LabelResult.shape[1] * LabelResult.shape[2])
             accuracy += right / tot
-            ResultImages[fileName[0]] = LabelResult #strange, my function return string, but pytorch change it to list
-            self.writeResultsFromNumpyLabel(LabelResult, fileName[0])
+            ResultImages[imgInformation['filename'][0]] = LabelResult #strange, my function return string, but pytorch change it to list
+            self.writeResultsFromNumpyLabel(LabelResult, imgInformation)
         print( "loss: ", loss / files_num, " acc: ", accuracy / files_num)
         return ResultImages
 
