@@ -25,11 +25,65 @@ class LUConv(nn.Module):
         out = self.relu1(self.bn1(self.conv1(x)))
         return out
 
+class Bottleneck(nn.Module):
 
-def _make_nConv(inChans, outChans, depth, elu):
+    def __init__(self, inplanes, planes, stride=1):
+        '''inplanes: the num of the input and output channels,
+           planes: the num of the bottlenectk channels'''
+        super(Bottleneck, self).__init__()
+        self.conv1 = nn.Conv3d(inplanes, planes, kernel_size=1, bias=False)
+        self.bn1 = nn.BatchNorm3d(planes)
+        self.conv2 = nn.Conv3d(planes, planes, kernel_size=3, stride=stride,
+                               padding=1, bias=False)
+        self.bn2 = nn.BatchNorm3d(planes)
+        self.conv3 = nn.Conv3d(planes, inplanes, kernel_size=1, bias=False)
+        self.bn3 = nn.BatchNorm3d(inplanes)
+        self.relu = nn.ReLU(inplace=True)
+        self.stride = stride
+        if self.stride ! = 1:
+            self.downsample =  nn.Sequential(
+                nn.Conv3d(self.inplanes, self.inplanes, kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm3d(self.inplanes)
+                )
+
+
+    def forward(self, x):
+        residual = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out = self.relu(out)
+
+        out = self.conv3(out)
+        out = self.bn3(out)
+
+        if self.sride != 1:
+            residual = self.downsample(x)
+
+        out += residual
+        out = self.relu(out)
+
+        return out
+
+
+class ShrinkChannels(nn.Module):
+
+    def __init__(self, inplanes, outplanes):
+        '''inplanes: the num of the input  channels,
+           outplanes: the num of the output channels'''
+        super(ShrinkChannels, self).__init__()
+        self.conv1 = nn.Conv3d(inplanes, outplanes, kernel_size=1, bias=False)
+        self.bn1 = nn.BatchNorm3d(outplanes)
+
+
+def _make_nConv(inChans, depth):
     layers = []
     for _ in range(depth):
-        layers.append(LUConv(inChans, outChans, elu))
+        layers.append(Bottleneck(inChans, inChans//4))
     return nn.Sequential(*layers)
 
 
@@ -39,27 +93,21 @@ class InputTransition(nn.Module):
         self.conv1 = nn.Conv3d(1, 32, kernel_size=3, padding=1)
         self.bn1 = nn.InstanceNorm3d(32)
         self.relu1 = ELUCons(elu, 32)
-        self.conv2 = nn.Conv3d(32, 32, kernel_size=3, padding=1)
-        self.bn2 = nn.InstanceNorm3d(32)
-        self.relu2 = ELUCons(elu, 32)
 
     def forward(self, x):
 
         out = self.relu1(self.bn1(self.conv1(x)))
-        out = self.relu2(self.bn2(self.conv2(out)))
         return out
 
 
 class DownTransition(nn.Module):
     def __init__(self, inChans, outChans, nConvs, elu, dropout=False):
         super(DownTransition, self).__init__()
-        self.down_conv = nn.Conv3d(inChans, outChans, kernel_size=2, stride=2)
-        self.bn1 = nn.InstanceNorm3d(outChans)
-        self.relu1 = ELUCons(elu, outChans)
-        self.ops = _make_nConv(outChans, outChans, nConvs, elu)
+        self.down_sample = Bottleneck(inChans, inChans//4, stride = 2) 
+        self.ops = _make_nConv(outChans, nConvs)
 
     def forward(self, x):
-        down = self.relu1(self.bn1(self.down_conv(x)))
+        down = self.down_sample(x)
         out = self.ops(down)
         return out
 
@@ -67,19 +115,20 @@ class DownTransition(nn.Module):
 class UpTransition(nn.Module):
     def __init__(self, inChans, outChans, skipxChans, nConvs, elu, dropout=False):
         super(UpTransition, self).__init__()
-        self.up_conv = nn.ConvTranspose3d(inChans, outChans, kernel_size=2, stride=2)
+        self.up_conv = nn.ConvTranspose3d(inChans, outChans//2, kernel_size=2, stride=2)
         self.bn1 = nn.InstanceNorm3d(outChans)
         self.relu1 = ELUCons(elu, outChans)
 
-        self.ops1 = LUConv(outChans + skipxChans, outChans, elu)
-        self.ops2 = _make_nConv(outChans, outChans, nConvs-1, elu)
+        self.skip = ShrinkChannels(skipxChans, outChans//2)
+
+        self.ops1 = _make_nConv(outChans, nConvs)
 
     def forward(self, x, skipx):
 
-        out = self.relu1(self.bn1(self.up_conv(x)))
-        xcat = torch.cat((out, skipx), 1)
+        out1 = self.relu1(self.bn1(self.up_conv(x)))
+        skipdata = self.skip(skipx)
+        xcat = torch.cat((out1, skipdata), 1)
         out = self.ops1(xcat)
-        out = self.ops2(out)
         return out
 
 
@@ -113,9 +162,9 @@ class VNet2(nn.Module):
     def __init__(self, elu=True, nll=True):
         super(VNet2, self).__init__()
         self.in_tr = InputTransition(32, elu)
-        self.down_tr64 = DownTransition(32, 64, 4, elu)
-        self.down_tr128 = DownTransition(64, 128, 4, elu)
-        self.down_tr256 = DownTransition(128, 256, 4, elu)
+        self.down_tr64 = DownTransition(32, 64, 3, elu)
+        self.down_tr128 = DownTransition(64, 128, 3, elu)
+        self.down_tr256 = DownTransition(128, 256, 3, elu)
         self.up_tr128 = UpTransition(256, 16, 128,  2, elu)
         self.up_tr64 = UpTransition(16, 16, 64, 2, elu)
         self.up_tr32 = UpTransition(16, 16, 32, 2, elu)
