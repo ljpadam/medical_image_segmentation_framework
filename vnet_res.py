@@ -27,29 +27,31 @@ class LUConv(nn.Module):
 
 class Bottleneck(nn.Module):
 
-    def __init__(self, inplanes, planes, stride=1):
+    def __init__(self, inplanes, planes, stride=1, outplanes=None):
         '''inplanes: the num of the input and output channels,
            planes: the num of the bottlenectk channels'''
         super(Bottleneck, self).__init__()
-        self.conv1 = nn.Conv3d(inplanes, planes, kernel_size=1, bias=False)
+
+        self.conv1 = nn.Conv3d(inplanes, planes, kernel_size=stride, stride = stride, bias=False)
         self.bn1 = nn.BatchNorm3d(planes)
-        self.conv2 = nn.Conv3d(planes, planes, kernel_size=3, stride=stride,
+        self.conv2 = nn.Conv3d(planes, planes, kernel_size=3, stride=1,
                                padding=1, bias=False)
         self.bn2 = nn.BatchNorm3d(planes)
-        self.conv3 = nn.Conv3d(planes, inplanes, kernel_size=1, bias=False)
-        self.bn3 = nn.BatchNorm3d(inplanes)
+        if outplanes == None:
+            outplanes = inplanes
+        self.conv3 = nn.Conv3d(planes, outplanes, kernel_size=1, bias=False)
+        self.bn3 = nn.BatchNorm3d(outplanes)
         self.relu = nn.ReLU(inplace=True)
         self.stride = stride
-        if self.stride ! = 1:
+        if self.stride != 1:
             self.downsample =  nn.Sequential(
-                nn.Conv3d(self.inplanes, self.inplanes, kernel_size=1, stride=stride, bias=False),
-                nn.BatchNorm3d(self.inplanes)
+                nn.Conv3d(inplanes, outplanes, kernel_size=stride, stride=stride, bias=False),
+                nn.BatchNorm3d(outplanes)
                 )
 
 
     def forward(self, x):
         residual = x
-
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
@@ -61,7 +63,7 @@ class Bottleneck(nn.Module):
         out = self.conv3(out)
         out = self.bn3(out)
 
-        if self.sride != 1:
+        if self.stride != 1:
             residual = self.downsample(x)
 
         out += residual
@@ -78,6 +80,9 @@ class ShrinkChannels(nn.Module):
         super(ShrinkChannels, self).__init__()
         self.conv1 = nn.Conv3d(inplanes, outplanes, kernel_size=1, bias=False)
         self.bn1 = nn.BatchNorm3d(outplanes)
+    
+    def forward(self, x):
+        return self.bn1(self.conv1(x))
 
 
 def _make_nConv(inChans, depth):
@@ -103,7 +108,7 @@ class InputTransition(nn.Module):
 class DownTransition(nn.Module):
     def __init__(self, inChans, outChans, nConvs, elu, dropout=False):
         super(DownTransition, self).__init__()
-        self.down_sample = Bottleneck(inChans, inChans//4, stride = 2) 
+        self.down_sample = Bottleneck(inChans, inChans//4, stride = 2, outplanes=outChans) 
         self.ops = _make_nConv(outChans, nConvs)
 
     def forward(self, x):
@@ -116,8 +121,8 @@ class UpTransition(nn.Module):
     def __init__(self, inChans, outChans, skipxChans, nConvs, elu, dropout=False):
         super(UpTransition, self).__init__()
         self.up_conv = nn.ConvTranspose3d(inChans, outChans//2, kernel_size=2, stride=2)
-        self.bn1 = nn.InstanceNorm3d(outChans)
-        self.relu1 = ELUCons(elu, outChans)
+        self.bn1 = nn.InstanceNorm3d(outChans//2)
+        self.relu1 = ELUCons(elu, outChans//2)
 
         self.skip = ShrinkChannels(skipxChans, outChans//2)
 
