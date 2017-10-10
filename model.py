@@ -86,6 +86,8 @@ class Model(object):
             result = np.transpose(result, [0, 2, 1])
         
         if not (np.asarray(result.shape) == imgInformation['originalSizes'].numpy()).all():
+            print ("result shape: ", result.shape)
+            print ("original shape: ", imgInformation['originalSizes'].numpy())
             print ("result shape is wrong!!!")
 
         if self.datasetTesting.probabilityMap:
@@ -136,7 +138,7 @@ class Model(object):
         torchImage.squeeze_()
         torchGT.squeeze_()
         tempresult = np.zeros(
-            (torchImage.size()[0], torchImage.size()[1], torchImage.size()[2]), dtype=np.float32)
+            (2, torchImage.size()[0], torchImage.size()[1], torchImage.size()[2]), dtype=np.float32)
         tempWeight = np.zeros(
             (torchImage.size()[0], torchImage.size()[1], torchImage.size()[2]), dtype=np.float32)
         height = int(self.params['DataManagerParams']['VolSize'][0])
@@ -209,8 +211,9 @@ class Model(object):
                         #temploss = bioloss.dice_loss(output, target)
                         # be carefull output is the log-probability, not the raw probability
                         # max(1) return a tumple,the second item is the index of the max
-                        output = output.data.max(1)[1]
-                        output = output.view(original_shape)
+                        #output = output.data.max(1)[1]
+                        output = output.view((original_shape[0], original_shape[1], original_shape[2], original_shape[3],2))
+                        output = output.permute(0, 4, 1, 2, 3).contiguous()
                         output = output.cpu()
 
                         for i in xrange(batchSize):
@@ -218,10 +221,10 @@ class Model(object):
                             # print temptrain_loss
 
                             #print batchCoordinates[i]
-                            tempresult[batchCoordinates[i][0]:batchCoordinates[i][1], batchCoordinates[i][2]:batchCoordinates[i][3],
-                            batchCoordinates[i][4]:batchCoordinates[i][5]] = tempresult[
+                            tempresult[:,batchCoordinates[i][0]:batchCoordinates[i][1], batchCoordinates[i][2]:batchCoordinates[i][3],
+                            batchCoordinates[i][4]:batchCoordinates[i][5]] = tempresult[:,
                             batchCoordinates[i][0]:batchCoordinates[i][1], batchCoordinates[i][2]:batchCoordinates[i][3],
-                            batchCoordinates[i][4]:batchCoordinates[i][5]] + output[i].numpy()
+                            batchCoordinates[i][4]:batchCoordinates[i][5]] + output[i].data.numpy()
                             
                             tempWeight[batchCoordinates[i][0]:batchCoordinates[i][1], batchCoordinates[i][2]:batchCoordinates[i][3],
                             batchCoordinates[i][4]:batchCoordinates[i][5]] = tempWeight[
@@ -241,24 +244,27 @@ class Model(object):
             #temploss = bioloss.dice_loss(output, target)
             # be carefull output is the log-probability, not the raw probability
             # max(1) return a tumple,the second item is the index of the max
-            output = output.data.max(1)[1]
-            output = output.view(original_shape)
+            #output = output.data.max(1)[1]
+            #output = output.view(original_shape)
+            output = output.view((original_shape[0], original_shape[1], original_shape[2], original_shape[3],2))
+            output = output.permute(0, 4, 1, 2, 3).contiguous()
             output = output.cpu()
 
             for i in xrange(numNow):
                 # print temptrain_loss
 
-                tempresult[batchCoordinates[i][0]:batchCoordinates[i][1], batchCoordinates[i][2]:batchCoordinates[i][3],
-                batchCoordinates[i][4]:batchCoordinates[i][5]] = tempresult[
+                tempresult[:, batchCoordinates[i][0]:batchCoordinates[i][1], batchCoordinates[i][2]:batchCoordinates[i][3],
+                batchCoordinates[i][4]:batchCoordinates[i][5]] = tempresult[:,
                 batchCoordinates[i][0]:batchCoordinates[i][1], batchCoordinates[i][2]:batchCoordinates[i][3],
-                batchCoordinates[i][4]:batchCoordinates[i][5]] + output[i].numpy()
+                batchCoordinates[i][4]:batchCoordinates[i][5]] + output[i].data.numpy()
                 
                 tempWeight[batchCoordinates[i][0]:batchCoordinates[i][1], batchCoordinates[i][2]:batchCoordinates[i][3],
                 batchCoordinates[i][4]:batchCoordinates[i][5]] = tempWeight[
                 batchCoordinates[i][0]:batchCoordinates[i][1], batchCoordinates[i][2]:batchCoordinates[i][3],
                 batchCoordinates[i][4]:batchCoordinates[i][5]] + 1
             loss = loss + temploss.cpu().data[0]
-        tempresult = tempresult / tempWeight
+        tempresult = tempresult.argmax(0)
+        #tempresult = tempresult / tempWeight
         # important! change the model back to the training phase!
         model.train()
         return (tempresult, loss)
