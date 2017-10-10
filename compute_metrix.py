@@ -13,7 +13,7 @@ from sklearn.metrics import precision_recall_curve
 from sklearn.metrics import jaccard_similarity_score
 from sklearn.metrics import f1_score
 
-ground_truth_path = '/home/ljp/from_Dfwang/WML_corrected/testing'
+ground_truth_path = '/home/ljp/data/lung/manual/testing/'
 results_path = './result/'
 ground_truth_labels = dict()
 results_labels = dict()
@@ -22,7 +22,7 @@ results_labels = dict()
 def load_labels():
     for folder in listdir(ground_truth_path):
         label = sitk.Cast(sitk.ReadImage(
-            join(join(ground_truth_path, folder), 'label.nii')), sitk.sitkFloat32)
+            join(join(ground_truth_path, folder), 'label.nii.gz')), sitk.sitkFloat32)
         # temp=sitk.GetArrayFromImage(label)
         # print temp.shape
         ground_truth_labels[folder] = np.transpose(sitk.GetArrayFromImage(
