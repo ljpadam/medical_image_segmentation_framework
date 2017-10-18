@@ -15,7 +15,7 @@ if __name__ == '__main__':
     # params of the algorithm
 
     params['ModelParams']['device'] = 0 # the id of the GPU
-    params['ModelParams']['snapshot'] = 0 #85000
+    params['ModelParams']['snapshot'] = 114000 #85000
     params['ModelParams']['dirTrain'] = '/home/ljp/data/lung/manual/randomcrops/training' # the directory of training data
     #params['ModelParams']['dirTest'] = '/home/ljp/from_Dfwang/WML/testing'
     # where we need to save the results (relative to the base path)
@@ -29,7 +29,7 @@ if __name__ == '__main__':
     params['ModelParams']['batchsize'] = 10  # the batch size
     params['ModelParams']['numIterations'] = 80000000  # the number of total training iterations
     params['ModelParams']['baseLR'] = 0.0003  # the learning rate, initial one
-    params['ModelParams']['nProc'] = 25  # the number of threads to do data augmentation
+    params['ModelParams']['nProc'] = 20  # the number of threads to do data augmentation
     params['ModelParams']['testInterval'] = 2000  # the number of training interations between testing
     params['ModelParams']['device_ids'] = [0, 1] # the id of the GPUs for the multi-GPU
 

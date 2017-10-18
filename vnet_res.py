@@ -167,9 +167,9 @@ class VNet2(nn.Module):
     def __init__(self, elu=True, nll=True):
         super(VNet2, self).__init__()
         self.in_tr = InputTransition(32, elu)
-        self.down_tr64 = DownTransition(32, 64, 3, elu)
-        self.down_tr128 = DownTransition(64, 128, 3, elu)
-        self.down_tr256 = DownTransition(128, 256, 3, elu)
+        self.down_tr64 = DownTransition(32, 64, 5, elu)
+        self.down_tr128 = DownTransition(64, 128, 5, elu)
+        self.down_tr256 = DownTransition(128, 256, 5, elu)
         self.up_tr128 = UpTransition(256, 16, 128,  2, elu)
         self.up_tr64 = UpTransition(16, 16, 64, 2, elu)
         self.up_tr32 = UpTransition(16, 16, 32, 2, elu)
