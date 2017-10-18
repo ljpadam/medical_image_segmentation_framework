@@ -37,6 +37,7 @@ import ImageTransform3D
 import torchvision.transforms as transforms
 import SimpleITK as sitk
 from os.path import isfile, join, splitext
+import FocalLoss
 
 
 class Model(object):
@@ -384,8 +385,9 @@ class Model(object):
 
                 output = model(data)
                 target = target.view(target.numel())
-                loss = F.nll_loss(output, target)
+                #loss = F.nll_loss(output, target)
                 #loss = bioloss.dice_loss(output, target)
+                loss = FocalLoss.focal_loss(output, target)
                 loss.backward()
                 optimizer.step()
 
