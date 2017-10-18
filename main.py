@@ -15,7 +15,7 @@ if __name__ == '__main__':
     # params of the algorithm
 
     params['ModelParams']['device'] = 0 # the id of the GPU
-    params['ModelParams']['snapshot'] = 114000 #85000
+    params['ModelParams']['snapshot'] = 0 #85000
     params['ModelParams']['dirTrain'] = '/home/ljp/data/lung/manual/randomcrops/training' # the directory of training data
     #params['ModelParams']['dirTest'] = '/home/ljp/from_Dfwang/WML/testing'
     # where we need to save the results (relative to the base path)
