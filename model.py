@@ -472,7 +472,7 @@ class Model(object):
         torch.cuda.set_device(self.params['ModelParams']['device'])
         # we define here a data manager object
         self.datasetTrain = lungDataset.lungDataset(self.params['ModelParams']['dirTrain'], self.params['ModelParams']['dirResult'], 
-                                                    transform = [ImageTransform3D.RandomCropSegmentation3D(self.params['DataManagerParams']['VolSize'], containLeision=2), ImageTransform3D.RandomRotateSegmentation3D(), ImageTransform3D.ToTensorSegmentation()])
+                                                    transform = [ImageTransform3D.RandomCropSegmentation3D(self.params['DataManagerParams']['VolSize'], containLeision=1), ImageTransform3D.RandomRotateSegmentation3D(), ImageTransform3D.ToTensorSegmentation()])
         self.trainData_loader = torch.utils.data.DataLoader(self.datasetTrain, batch_size= self.params['ModelParams']['batchsize'], shuffle=True, num_workers= self.params['ModelParams']['nProc'], pin_memory=True)
         
         self.datasetValidation = lungDataset.lungDataset(self.params['ModelParams']['dirValidation'], self.params['ModelParams']['dirResult'], 

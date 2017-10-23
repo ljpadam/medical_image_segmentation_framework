@@ -108,14 +108,16 @@ class lungDataset(data.Dataset):
             join(join(self.srcFolder, self.fileList[index]), 'label.nii')), sitk.sitkFloat32)
         label = self.getNumpyData_forLabel(label, self.fileList[index])
         if self.training:
-            pass
-            #self.loadLesionPositions(self.fileList[index])
+            self.loadLesionPositions(self.fileList[index])
+            currentLesionPositions = self.lesionPositions[index]
+        else:
+            currentLesionPositions = None
         # img = np.zeros([100,100,100])
         # label = np.ones([100,100,100])
         fileName = self.fileList[index]
         if self.transform:
             for f in self.transform:
-                img, label = f(img, label, fileName, None)
+                img, label = f(img, label, fileName, currentLesionPositions)
         #print(fileName)
         imgInformation['filename'] = fileName
         return img, label, imgInformation

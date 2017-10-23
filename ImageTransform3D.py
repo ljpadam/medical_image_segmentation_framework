@@ -31,6 +31,7 @@ class RandomCropSegmentation3D(object):
         findLeision = False
         if containLeision == 0:
             leisionNum = len(leisionPositions)
+            print('prepare lesion: ', leisionNum)
             leisionIndex = np.random.randint(leisionNum)
             (y, x, z) = leisionPositions[leisionIndex]
             starty = (y - self.output_size[0] * 2//3) + np.random.randint(self.output_size[0]//3)
@@ -45,13 +46,14 @@ class RandomCropSegmentation3D(object):
             cropGT = cropGT.astype(dtype=np.float32)
             
         else:
+            print ('prepare non-leision: ')
             starty = np.random.randint(image_height - self.output_size[0])
             startx = np.random.randint(image_width - self.output_size[1])
             startz = np.random.randint(image_depth - self.output_size[2])
             cropimage = tempimage[starty: starty + self.output_size[0], startx: startx + self.output_size[1], startz: startz + self.output_size[2]]
             cropGT = tempGT[starty: starty + self.output_size[0], startx: startx + self.output_size[1], startz: startz + self.output_size[2]]
 
-        if cropimage.shape != (64, 64, 24):
+        if cropimage.shape != (64, 64, 64):
             print startx, stary, startz
             print cropimage.shape
         cropimage = cropimage.astype(dtype=np.float32)
@@ -78,5 +80,62 @@ class ToTensorSegmentation(object):
               img = img.reshape([1,img.shape[0], img.shape[1], img.shape[2]])
               label = label.reshape([1, label.shape[0], label.shape[1], label.shape[2]])
           return torch.from_numpy(img), torch.from_numpy(label).long()
+
+class SplitDataAndToTensor(object):
+    '''split the full img into many crops according to the stride and crop size,
+    the returned data is transformed to tensor, and the batch size is calculated based on the crop size, and the original batch size in dataloader is ignored'''
+    def __init___(self, stride, volsize):
+        self.stride = stride
+        self.volsize = volsize
+
+    def __call__(self, img, label, name, leisionPositions):
+        height = int(self.volsize[0])
+        width = int(self.volsize[1])
+        depth = int(self.volsize[2])
+        stride_height = int(self.stride[0])
+        stride_width = int(self.stride[1])
+        stride_depth = int(self.stride[2])
+        whole_height = int(img.shape[0])
+        whole_width = int(img.shape[1])
+        whole_depth = int(img.shape[2])
+        ynum = int(math.ceil((whole_height - height) / float(stride_height))) + 1
+        xnum = int(math.ceil((whole_width - width) / float(stride_width))) + 1
+        znum = int(math.ceil((whole_depth - depth) / float(stride_depth))) + 1
+        imgs = list()
+        labels = list()
+        coordinates = list()
+        # crop the image
+        for y in xrange(ynum):
+            for x in xrange(xnum):
+                for z in xrange(znum):
+                    if(y * stride_height + height < whole_height):
+                        ystart = y * stride_height
+                        yend = ystart + height
+                    else:
+                        ystart = whole_height - height
+                        yend = whole_height
+                    if(x * stride_width + width < whole_width):
+                        xstart = x * stride_width
+                        xend = xstart + width
+                    else:
+                        xstart = whole_width - width
+                        xend = whole_width
+                    if(z * stride_depth + depth < whole_depth):
+                        zstart = z * stride_depth
+                        zend = zstart + depth
+                    else:
+                        zstart = whole_depth - depth
+                        zend = whole_depth
+                    imgs.append(img[ystart:yend, xstart:xend, zstart:zend])
+                    labels.append(label[ystart:yend, xstart:xend, zstart:zend])
+                    coordinates.append(np.asarray([ystart, yend, xstart, xend, zstart, zend]))
+        imgs_numpy = np.zeros((len(imgs),1, height, width, depth))
+        labels_numpy = np.zeros((len(imgs),1, height, width, depth))
+        for i in xrange(len(imgs)):
+            imgs_numpy[i,0,:, :, :] = imgs[i]
+            labels_numpy[i,0,:, :, :] = labels[i]
+        return torch.from_numpy(imgs_numpy), torch.from_numpy(labels_numpy), coordinates
+        
+
 
 
