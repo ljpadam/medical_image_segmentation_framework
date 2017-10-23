@@ -31,7 +31,7 @@ class RandomCropSegmentation3D(object):
         findLeision = False
         if containLeision == 0:
             leisionNum = len(leisionPositions)
-            print('prepare lesion: ', leisionNum)
+            #print('prepare lesion: ', leisionNum)
             leisionIndex = np.random.randint(leisionNum)
             (y, x, z) = leisionPositions[leisionIndex]
             starty = (y - self.output_size[0] * 2//3) + np.random.randint(self.output_size[0]//3)
@@ -46,7 +46,7 @@ class RandomCropSegmentation3D(object):
             cropGT = cropGT.astype(dtype=np.float32)
             
         else:
-            print ('prepare non-leision: ')
+            #print ('prepare non-leision: ')
             starty = np.random.randint(image_height - self.output_size[0])
             startx = np.random.randint(image_width - self.output_size[1])
             startz = np.random.randint(image_depth - self.output_size[2])
@@ -54,7 +54,7 @@ class RandomCropSegmentation3D(object):
             cropGT = tempGT[starty: starty + self.output_size[0], startx: startx + self.output_size[1], startz: startz + self.output_size[2]]
 
         if cropimage.shape != (64, 64, 64):
-            print startx, stary, startz
+            print startx, starty, startz
             print cropimage.shape
         cropimage = cropimage.astype(dtype=np.float32)
         cropGT = cropGT.astype(dtype=np.float32)

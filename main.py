@@ -35,8 +35,8 @@ if __name__ == '__main__':
 
 
     # params of the DataManager
-    params['DataManagerParams']['VolSize'] = np.asarray([64, 64, 24], dtype=int) # the size of the crop image
-    params['DataManagerParams']['TestStride'] = np.asarray([64, 64, 24], dtype=int) # the stride of the adjacent crop image in testing phase and validation phase
+    params['DataManagerParams']['VolSize'] = np.asarray([64, 64, 64], dtype=int) # the size of the crop image
+    params['DataManagerParams']['TestStride'] = np.asarray([64, 64, 64], dtype=int) # the stride of the adjacent crop image in testing phase and validation phase
 
 
     # Ture: produce the probaility map in the testing phase, False: produce the  label image

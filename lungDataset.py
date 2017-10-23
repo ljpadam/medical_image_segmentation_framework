@@ -109,7 +109,7 @@ class lungDataset(data.Dataset):
         label = self.getNumpyData_forLabel(label, self.fileList[index])
         if self.training:
             self.loadLesionPositions(self.fileList[index])
-            currentLesionPositions = self.lesionPositions[index]
+            currentLesionPositions = self.lesionPositions[self.fileList[index]]
         else:
             currentLesionPositions = None
         # img = np.zeros([100,100,100])
