@@ -117,11 +117,12 @@ def compute_metrix():
     #the memory are not sufficient
       
     
-
+    i = 0
     for TP,FP, FN in results:
         FP_total = FP_total + FP
         sensitivity = sensitivity + float(TP / (TP + FN))
-        print 'sensitivity: ', float(TP / (TP + FN))
+        print names[i], 'sensitivity: ', float(TP / (TP + FN)), 'FP:', FP
+        i = i+1
         if TP + FP > 0:
             precision = precision +(TP/(TP+FP))
     imgs_num = len(names)
