@@ -26,7 +26,7 @@ if __name__ == '__main__':
     # where to save the models while training
     params['ModelParams']['dirSnapshots'] = "/media/ljp/2775494b-5f8e-4d4b-976a-1c1b403a1bb9/pytorch/" # the directory of the model snapshots for training
     params['ModelParams']['tailSnapshots'] = 'lung/vnet/' # the full path of the model snapshots is the join of dirsnapshots and presnapshots
-    params['ModelParams']['batchsize'] = 10  # the batch size
+    params['ModelParams']['batchsize'] = 2  # the batch size
     params['ModelParams']['numIterations'] = 80000000  # the number of total training iterations
     params['ModelParams']['baseLR'] = 0.0003  # the learning rate, initial one
     params['ModelParams']['nProc'] = 20  # the number of threads to do data augmentation
@@ -35,8 +35,8 @@ if __name__ == '__main__':
 
 
     # params of the DataManager
-    params['DataManagerParams']['VolSize'] = np.asarray([64, 64, 64], dtype=int) # the size of the crop image
-    params['DataManagerParams']['TestStride'] = np.asarray([64, 64, 64], dtype=int) # the stride of the adjacent crop image in testing phase and validation phase
+    params['DataManagerParams']['VolSize'] = np.asarray([128, 128, 128], dtype=int) # the size of the crop image
+    params['DataManagerParams']['TestStride'] = np.asarray([128, 128, 128], dtype=int) # the stride of the adjacent crop image in testing phase and validation phase
 
 
     # Ture: produce the probaility map in the testing phase, False: produce the  label image

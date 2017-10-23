@@ -40,8 +40,20 @@ class RandomCropSegmentation3D(object):
             starty = max(starty, 0)
             startx = max(startx, 0)
             startz = max(startz, 0)
-            cropimage = tempimage[starty: starty + self.output_size[0], startx: startx + self.output_size[1], startz: startz + self.output_size[2]]
-            cropGT = tempGT[starty: starty + self.output_size[0], startx: startx + self.output_size[1], startz: startz + self.output_size[2]]
+            endy = starty + self.output_size[0]
+            endx = startx + self.output_size[1]
+            endz = startz + self.output_size[2]
+            if endy >= image_height:
+                endy = image_height
+                starty = endy-self.output_size[0]
+            if endx >= image_width:
+                endx = image_width
+                startx = endx - self.output_size[1]
+            if endz >= image_depth:
+                endz = image_depth
+                startz = endz - self.output_size[2]
+            cropimage = tempimage[starty: endy, startx: endx, startz: endz]
+            cropGT = tempGT[starty: endy, startx: endx, startz: endz]
             cropimage = cropimage.astype(dtype=np.float32)
             cropGT = cropGT.astype(dtype=np.float32)
             
@@ -53,9 +65,10 @@ class RandomCropSegmentation3D(object):
             cropimage = tempimage[starty: starty + self.output_size[0], startx: startx + self.output_size[1], startz: startz + self.output_size[2]]
             cropGT = tempGT[starty: starty + self.output_size[0], startx: startx + self.output_size[1], startz: startz + self.output_size[2]]
 
-        if cropimage.shape != (64, 64, 64):
+        if not np.all(cropimage.shape == self.output_size):
             print startx, starty, startz
-            print cropimage.shape
+            print 'cropimage size', cropimage.shape
+            print 'croplabel size', cropGT.shape
         cropimage = cropimage.astype(dtype=np.float32)
         cropGT = cropGT.astype(dtype=np.float32)
         return cropimage, cropGT
